@@ -25,13 +25,14 @@ claude plugin install skill-markserv@zigorou-marketplace
 ```
 /markserv              # Start preview on current directory
 /markserv stop         # Stop running instance
+/markserv status       # Show running instances (port, root dir, URL)
 ```
 
 Or just ask naturally:
 
-- "markserv 起動して"
-- "この README をプレビューしたい"
-- "markserv 止めて"
+- "start markserv"
+- "I want to preview this README"
+- "stop markserv"
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 ---
 name: markserv
-description: Start or stop a local Markdown preview server (markserv). Use this skill when the user wants to preview markdown files in the browser, start markserv, stop markserv, shut down the preview server, or mentions wanting to see rendered markdown locally. Also trigger when the user says things like "open this doc in the browser", "preview this README", or "kill the preview server".
+description: Start, stop, or check the status of a local Markdown preview server (markserv). Use this skill when the user wants to preview markdown files in the browser, start markserv, stop markserv, shut down the preview server, check what markserv instances are running, or mentions wanting to see rendered markdown locally. Also trigger when the user says things like "open this doc in the browser", "preview this README", "kill the preview server", or "what port is markserv on".
 ---
 
 # markserv — Markdown Preview Server
@@ -34,6 +34,27 @@ When the user wants to preview markdown:
    - Use `-b false` to suppress auto-opening the browser
 4. Tell the user the URL: `http://localhost:<port>`
 
+## Checking status
+
+When the user runs `/markserv status` or asks what markserv instances are running:
+
+1. Run the same `ps aux` command used for stopping:
+   ```bash
+   ps aux | grep '[n]px markserv\|[n]pm exec markserv' | grep -v grep
+   ```
+2. Parse each line to extract:
+   - PID
+   - Port (`-p <port>`)
+   - Root directory / target path (the positional argument before the flags)
+3. Present a formatted list, for example:
+   ```
+   PID    Port   Root
+   12345  8080   /Users/you/project
+   12678  8081   /Users/you/project/docs
+   ```
+   Include the URL `http://localhost:<port>` for each entry so the user can click it directly.
+4. If no instances are running, say so clearly.
+
 ## Stopping markserv
 
 When the user wants to stop the preview server:
@@ -54,13 +75,18 @@ When the user wants to stop the preview server:
 ## Example interactions
 
 **Starting:**
-- "markserv 起動して" → start on cwd, auto-select port
-- "この README をプレビューしたい" → start on README.md
-- "docs/ を markserv で見たい" → start on docs/
-- "別ポートで markserv 立ち上げて" → find next available port
+- "start markserv" → start on cwd, auto-select port
+- "I want to preview this README" → start on README.md
+- "open docs/ with markserv" → start on docs/
+- "launch markserv on a different port" → find next available port
+
+**Status:**
+- "markserv status" → list all running instances with port and root dir
+- "what port is markserv running on?" → show status
+- "is markserv running?" → show status
 
 **Stopping:**
-- "markserv 止めて" → stop the running instance
-- "プレビューサーバー閉じて" → stop markserv
-- "markserv シャットダウン" → stop markserv
-- "全部の markserv 止めて" → stop all instances
+- "stop markserv" → stop the running instance
+- "close the preview server" → stop markserv
+- "shut down markserv" → stop markserv
+- "stop all markserv instances" → stop all instances
