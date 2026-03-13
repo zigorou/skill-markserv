@@ -18,7 +18,12 @@ When the user wants to preview markdown:
 1. Determine the target: use the file or directory the user specifies, or fall back to the current working directory
 2. Find an available port starting from 8080, incrementing until one is free:
    ```bash
-   python3 -c "import socket; s=socket.socket(); s.bind(('',PORT)); s.close()" 2>/dev/null
+   for port in $(seq 8080 8099); do
+     if python3 -c "import socket; s=socket.socket(); s.bind(('',${port})); s.close()" 2>/dev/null; then
+       echo "$port"
+       break
+     fi
+   done
    ```
 3. Start markserv in the background using `npx`:
    ```bash
@@ -27,36 +32,24 @@ When the user wants to preview markdown:
    - Use the Bash tool with `run_in_background: true`
    - Set livereload port to `main_port + 27649` (to avoid collisions with other instances)
    - Use `-b false` to suppress auto-opening the browser
-4. Record the PID from the background task for later shutdown
-5. Tell the user the URL: `http://localhost:<port>`
+4. Tell the user the URL: `http://localhost:<port>`
 
 ## Stopping markserv
 
 When the user wants to stop the preview server:
 
-1. Find running markserv processes:
+1. List running markserv instances with their details using `ps aux`. This gives port and target info that `pgrep` alone does not:
    ```bash
-   pgrep -f markserv
+   ps aux | grep '[n]px markserv\|[n]pm exec markserv' | grep -v grep
    ```
-2. If multiple instances are running, list them with their ports and let the user choose which to stop
-3. If only one instance, stop it directly:
+2. Parse the output to extract port (`-p <port>`) and target (file/directory) for each instance
+3. If **multiple instances** are running, present a list showing port and target for each, and ask the user which to stop (or offer "all")
+4. If **one instance**, stop it directly
+5. Stop by killing the process tree (the npm/npx parent spawns a child `markserv` process):
    ```bash
-   kill <pid>
+   kill <parent-pid>
    ```
-4. Confirm to the user that the server has been stopped
-
-## Port selection
-
-Always check if a port is available before using it. Start from 8080 and try incrementally (8081, 8082, ...) until a free port is found. This avoids conflicts when the user already has other services running.
-
-```bash
-for port in $(seq 8080 8099); do
-  if python3 -c "import socket; s=socket.socket(); s.bind(('',${port})); s.close()" 2>/dev/null; then
-    echo "$port"
-    break
-  fi
-done
-```
+6. Confirm to the user that the server has been stopped
 
 ## Example interactions
 
@@ -70,3 +63,4 @@ done
 - "markserv 止めて" → stop the running instance
 - "プレビューサーバー閉じて" → stop markserv
 - "markserv シャットダウン" → stop markserv
+- "全部の markserv 止めて" → stop all instances

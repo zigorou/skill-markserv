@@ -1,0 +1,23 @@
+{
+  "skill_name": "skill-markserv",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "カレントディレクトリで markserv 起動して",
+      "expected_output": "markserv がバックグラウンドで起動し、空きポートの URL が表示される",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "docs/claude-code-multi-profile.md をブラウザでプレビューしたい",
+      "expected_output": "指定ファイルに対して markserv が起動し、URL が表示される",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "markserv 止めて",
+      "expected_output": "実行中の markserv プロセスを特定して停止し、完了を報告する",
+      "files": []
+    }
+  ]
+}
