@@ -1,7 +1,6 @@
 {
   "name": "skill-markserv",
   "description": "Start, stop, or check the status of a local Markdown preview server (markserv)",
-  "version": "1.0.0",
   "author": {
     "name": "zigorou"
   }
