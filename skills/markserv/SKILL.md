@@ -16,10 +16,14 @@ markserv renders Markdown as GitHub-styled HTML with live-reload. This skill han
 When the user wants to preview markdown:
 
 1. Determine the target: use the file or directory the user specifies, or fall back to the current working directory
-2. Find an available port starting from 8080, incrementing until one is free:
+2. Find an available port starting from 8080, incrementing until one is free on both IPv4 and IPv6 (markserv binds to both):
    ```bash
    for port in $(seq 8080 8099); do
-     if python3 -c "import socket; s=socket.socket(); s.bind(('',${port})); s.close()" 2>/dev/null; then
+     if python3 -c "
+   import socket
+   s4=socket.socket(socket.AF_INET,socket.SOCK_STREAM); s4.bind(('127.0.0.1',${port})); s4.close()
+   s6=socket.socket(socket.AF_INET6,socket.SOCK_STREAM); s6.bind(('::1',${port})); s6.close()
+   " 2>/dev/null; then
        echo "$port"
        break
      fi
