@@ -11,12 +11,31 @@ Manage a local markserv instance for previewing Markdown files in the browser wi
 
 markserv renders Markdown as GitHub-styled HTML with live-reload. This skill handles starting it on an available port and stopping it when done.
 
+## Session PID file
+
+This skill uses a per-session PID file to track markserv processes:
+
+- Path: `/tmp/markserv-cc-${CLAUDE_SESSION_ID}.pid`  (one file per session)
+- The `CLAUDE_SESSION_ID` environment variable is set by a `SessionStart` hook (see README). If it is unset, fall back to `default` and warn the user that session isolation is not active.
+
 ## Starting markserv
 
 When the user wants to preview markdown:
 
-1. Determine the target: use the file or directory the user specifies, or fall back to the current working directory
-2. Find an available port starting from 8080, incrementing until one is free on both IPv4 and IPv6 (markserv binds to both):
+1. **Check for an already-running instance in this session.** Read the session PID file (if it exists) and test whether any listed PID is still alive:
+   ```bash
+   PID_FILE="/tmp/markserv-cc-${CLAUDE_SESSION_ID:-default}.pid"
+   if [ -f "$PID_FILE" ]; then
+     while IFS= read -r pid; do
+       kill -0 "$pid" 2>/dev/null && echo "alive:$pid" && break
+     done < "$PID_FILE"
+   fi
+   ```
+   - If a live PID is found, **do not start a new instance**. Tell the user markserv is already running in this session and show its URL. Suggest `/markserv stop` first if they want to restart.
+   - If the file exists but all PIDs are dead (e.g. crashed), remove the stale file and proceed.
+
+2. Determine the target: use the file or directory the user specifies, or fall back to the current working directory
+3. Find an available port starting from 8080, incrementing until one is free on both IPv4 and IPv6 (markserv binds to both):
    ```bash
    for port in $(seq 8080 8099); do
      if python3 -c "
@@ -29,14 +48,18 @@ When the user wants to preview markdown:
      fi
    done
    ```
-3. Start markserv in the background using `npx`:
+4. Start markserv in the background using `npx`:
    ```bash
    npx markserv <target> -p <port> -l <livereload-port> -b false
    ```
    - Use the Bash tool with `run_in_background: true`
    - Set livereload port to `main_port + 27649` (to avoid collisions with other instances)
    - Use `-b false` to suppress auto-opening the browser
-4. Tell the user the URL: `http://localhost:<port>`
+5. Record the PID for session-end cleanup. Run this as a separate (non-background) Bash command after markserv has started:
+   ```bash
+   sleep 1 && ps aux | grep '[n]px markserv' | grep -- '-p <port>' | awk '{print $2}' >> "/tmp/markserv-cc-${CLAUDE_SESSION_ID:-default}.pid"
+   ```
+6. Tell the user the URL: `http://localhost:<port>`
 
 ## Checking status
 
@@ -74,7 +97,11 @@ When the user wants to stop the preview server:
    ```bash
    kill <parent-pid>
    ```
-6. Confirm to the user that the server has been stopped
+6. Remove the PID from the tracking file:
+   ```bash
+   sed -i '' '/<parent-pid>/d' "/tmp/markserv-cc-${CLAUDE_SESSION_ID:-default}.pid"
+   ```
+7. Confirm to the user that the server has been stopped
 
 ## Example interactions
 

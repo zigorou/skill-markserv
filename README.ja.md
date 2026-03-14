@@ -7,6 +7,7 @@
 - ファイルまたはディレクトリに対して markserv を起動（ポート自動選択）
 - 実行中の markserv インスタンスを停止
 - 複数インスタンスの同時管理
+- セッション終了時の自動停止（`SessionEnd` フックでオプトイン）
 
 ## インストール
 
@@ -33,6 +34,44 @@ claude plugin install skill-markserv@zigorou-marketplace
 - "markserv 起動して"
 - "この README をプレビューしたい"
 - "markserv 止めて"
+
+## セッション終了時の自動停止
+
+Claude Code のセッション終了時に markserv を自動停止するには、`~/.claude/settings.json` に `SessionStart` と `SessionEnd` の両フックを追加します。セッション固有の PID ファイルを使うため、**他のセッションで起動した markserv には影響しません**。
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); SESSION_ID=$(echo \"$INPUT\" | python3 -c \"import sys,json; print(json.load(sys.stdin)['session_id'])\"); echo \"export CLAUDE_SESSION_ID=$SESSION_ID\" >> \"$CLAUDE_ENV_FILE\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "SESSION_ID=$(cat | python3 -c \"import sys,json; print(json.load(sys.stdin)['session_id'])\"); PID_FILE=\"/tmp/markserv-cc-${SESSION_ID}.pid\"; [ -f \"$PID_FILE\" ] && xargs kill < \"$PID_FILE\" 2>/dev/null; rm -f \"$PID_FILE\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+仕組み：
+
+- **`SessionStart`**: session_id を `$CLAUDE_ENV_FILE` 経由で `CLAUDE_SESSION_ID` 環境変数として設定し、セッション内のすべての Bash ツール実行から参照できるようにします。
+- **`SessionEnd`**: stdin から session_id を読み取り、`/tmp/markserv-cc-<session_id>.pid` に記録された PID を kill してファイルを削除します。**このセッションで起動したプロセスのみ**が対象です。
+
+> **補足:** `SessionEnd` フックはセッションが完全に閉じる前に実行されるため、`kill` は確実に動作します。デフォルトのタイムアウトは 1.5 秒ですが、`kill` は即座に完了するため問題ありません。
 
 ## 動作要件
 
